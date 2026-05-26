@@ -13,6 +13,27 @@ const commands = [
         .setDescription('정원 (기본 3명)')
         .addChoices({ name: '3명', value: 3 }, { name: '4명 (코발트)', value: 4 })
     ),
+  new SlashCommandBuilder()
+    .setName('명령어')
+    .setDescription('호출 메시지 관리')
+    .addSubcommand((sc) =>
+      sc.setName('목록').setDescription('현재 등록된 호출 메시지 종류를 보여줍니다')
+    )
+    .addSubcommand((sc) =>
+      sc
+        .setName('추가')
+        .setDescription('새 호출 메시지를 추가합니다 (예: 메시지=오터턴, 인원=3 → "오터턴?" 매칭)')
+        .addStringOption((o) =>
+          o.setName('메시지').setDescription('등록할 호출 메시지 (물음표/공백 없이)').setRequired(true)
+        )
+        .addIntegerOption((o) =>
+          o
+            .setName('인원')
+            .setDescription('이 메시지에 연결할 정원')
+            .addChoices({ name: '3명', value: 3 }, { name: '4명 (코발트)', value: 4 })
+            .setRequired(true)
+        )
+    ),
 ].map((c) => c.toJSON());
 
 const { DISCORD_TOKEN, CLIENT_ID, GUILD_ID } = process.env;

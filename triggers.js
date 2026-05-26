@@ -1,20 +1,29 @@
 // 채팅 트리거 감지.
-//  - 키워드 "바로 뒤에 물음표(?)"가 있어야만 동작합니다.
-//    (문장 속에 키워드가 박혀 있어도 ?가 없으면 무시 → 오작동 방지)
-//  - "코발트?" → 4명 모집
-//  - "오터턴? / 이터널리턴? / 이리샥? / 블석? / 이리? / 이턴?" → 3명 모집
+//  - 메시지 전체가 정확히 "키워드?" 형태일 때만 동작합니다.
+//    (앞뒤 공백은 trim, 키워드와 ? 사이의 공백은 허용)
+//    예) "오터턴?"            → 매칭
+//        " 오터턴 ? "          → 매칭 (trim)
+//        "오터턴? 같이 하자"    → 매칭 안 됨
+//        "내가 오터턴? 했는데"  → 매칭 안 됨
+//  - 키워드 목록은 keywordStore(keywords.json)에서 읽어옵니다.
+//  - "코발트?" → 4명 모집 / "오터턴? / 이터널리턴? ..." → 3명 모집 (기본값)
 
-const KW_4 = ['코발트'];
-const KW_3 = ['오터턴', '이터널리턴', '이리샥', '블석', '이리', '이턴'];
+import { getKeywords } from './keywordStore.js';
 
-// 키워드 바로 뒤(공백 허용)에 물음표(? 또는 ？)가 와야 매칭
-function hit(content, kw) {
-  return new RegExp(`${kw}\\s*[?？]`).test(content);
+function escapeRegExp(s) {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+// 메시지 전체가 키워드+? 인지 검사
+function hit(text, kw) {
+  return new RegExp(`^${escapeRegExp(kw)}\\s*[?？]$`).test(text);
 }
 
 // 매칭되면 { mode, size }, 아니면 null
 export function detectTrigger(content) {
-  if (KW_4.some((k) => hit(content, k))) return { mode: '코발트', size: 4 };
-  if (KW_3.some((k) => hit(content, k))) return { mode: '이터널리턴', size: 3 };
+  const text = content.trim();
+  const kws = getKeywords();
+  if (kws[4].some((k) => hit(text, k))) return { mode: '코발트', size: 4 };
+  if (kws[3].some((k) => hit(text, k))) return { mode: '이터널리턴', size: 3 };
   return null;
 }

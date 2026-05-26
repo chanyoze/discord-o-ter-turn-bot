@@ -12,6 +12,9 @@ import { Client, GatewayIntentBits, Events, MessageFlags } from 'discord.js';
 import { detectTrigger } from './triggers.js';
 import { buildJoinRow, buildRecruitEmbed } from './ui.js';
 import { log } from './logger.js';
+import { initKeywords, getKeywords, addKeyword } from './keywordStore.js';
+
+await initKeywords();
 
 const EXPIRE_MS = Number(process.env.EXPIRE_MINUTES || 30) * 60 * 1000; // 자동 마감 시간
 
@@ -137,6 +140,46 @@ client.on(Events.MessageCreate, async (message) => {
 // ── 상호작용(슬래시 / 버튼) ───────────────────────────
 client.on(Events.InteractionCreate, async (interaction) => {
   try {
+    // 슬래시: /명령어 (목록|추가)
+    if (interaction.isChatInputCommand() && interaction.commandName === '명령어') {
+      const sub = interaction.options.getSubcommand();
+
+      // /명령어 목록 — 등록된 호출 메시지 종류 보여주기
+      if (sub === '목록') {
+        const kws = getKeywords();
+        const fmt = (arr) => (arr.length ? arr.map((k) => `\`${k}?\``).join(', ') : '_없음_');
+        await interaction.reply({
+          content: [
+            '📋 **현재 등록된 호출 메시지**',
+            `• 4명 모집(코발트): ${fmt(kws[4])}`,
+            `• 3명 모집(이터널리턴): ${fmt(kws[3])}`,
+            '',
+            '_채팅에 정확히 위 형태(키워드+?)로 입력하면 모집이 시작됩니다._',
+            '_새 호출 메시지는 `/명령어 추가` 로 등록할 수 있어요._',
+          ].join('\n'),
+          flags: MessageFlags.Ephemeral,
+        });
+        return;
+      }
+
+      // /명령어 추가 [메시지] [인원]
+      if (sub === '추가') {
+        const keyword = interaction.options.getString('메시지', true);
+        const size = interaction.options.getInteger('인원', true);
+        const result = await addKeyword(keyword, size);
+        if (!result.ok) {
+          await interaction.reply({ content: `⚠️ ${result.reason}`, flags: MessageFlags.Ephemeral });
+          return;
+        }
+        log.info(`키워드 추가: "${result.keyword}" → ${result.size}명 모집 (by ${interaction.user.tag})`);
+        await interaction.reply({
+          content: `✅ 등록 완료! 이제 \`${result.keyword}?\` 라고 입력하면 **${result.size}명** 모집이 시작돼요.`,
+        });
+        return;
+      }
+      return;
+    }
+
     // 슬래시: /모집 [인원]
     if (interaction.isChatInputCommand() && interaction.commandName === '모집') {
       const user = { id: interaction.user.id, name: memberName(interaction.member, interaction.user) };
